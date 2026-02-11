@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>文字数カウンター | リアルタイム文字数・単語数・行数カウント</title>
+  <meta name="description" content="テキストの文字数・単語数・行数をリアルタイムでカウント。SNS文字数制限チェック、漢字比率、読了時間、原稿用紙換算など高機能な無料ツール。">
+  <meta name="keywords" content="文字数カウンター,文字数,単語数,行数,カウント,テキスト,ツール,SNS,Twitter,漢字比率">
+  <meta property="og:title" content="文字数カウンター | リアルタイム文字数・単語数・行数カウント">
+  <meta property="og:description" content="テキストの文字数・単語数・行数をリアルタイムでカウント。SNS制限チェック、漢字比率分析、読了時間表示など。">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <link rel="canonical" href="">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0f0f13;
+      --surface: #1a1a24;
+      --surface-2: #24243a;
+      --surface-3: #1e1e30;
+      --border: #2e2e48;
+      --text: #e8e8f0;
+      --text-muted: #8888a8;
+      --text-dim: #55556e;
+      --accent-1: #6c5ce7;
+      --accent-2: #00cec9;
+      --accent-3: #fd79a8;
+      --accent-4: #fdcb6e;
+      --accent-5: #55efc4;
+      --danger: #ff6b6b;
+      --warning: #ffa502;
+      --success: #2ed573;
+      --gradient-1: linear-gradient(135deg, #6c5ce7, #a855f7);
+      --gradient-2: linear-gradient(135deg, #00cec9, #55efc4);
+      --gradient-3: linear-gradient(135deg, #fd79a8, #e84393);
+      --gradient-4: linear-gradient(135deg, #fdcb6e, #f39c12);
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+
+    html[data-theme="light"] {
+      --bg: #f0f0f5;
+      --surface: #ffffff;
+      --surface-2: #e8e8f0;
+      --surface-3: #f5f5fa;
+      --border: #d0d0e0;
+      --text: #1a1a2e;
+      --text-muted: #6e6e8a;
+      --text-dim: #9898b0;
+      --accent-1: #5b4cdb;
+      --accent-2: #00b8b3;
+      --accent-3: #e84393;
+      --accent-4: #e6a817;
+      --danger: #e04040;
+      --warning: #d48f00;
+      --success: #20a85c;
+    }
+
+    body {
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    .bg-glow {
+      position: fixed; inset: 0;
+      pointer-events: none; overflow: hidden; z-index: 0;
+    }
+    .bg-glow::before, .bg-glow::after {
+      content: ''; position: absolute; border-radius: 50%;
+      filter: blur(120px); opacity: 0.10;
+    }
+    .bg-glow::before {
+      width: 600px; height: 600px; background: var(--accent-1);
+      top: -200px; right: -100px;
+    }
+    .bg-glow::after {
+      width: 500px; height: 500px; background: var(--accent-2);
+      bottom: -150px; left: -100px;
+    }
+    html[data-theme="light"] .bg-glow::before,
+    html[data-theme="light"] .bg-glow::after { opacity: 0.06; }
+
+    .container {
+      position: relative; z-index: 1;
+      max-width: 960px; margin: 0 auto;
+      padding: 32px 20px 60px;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center; margin-bottom: 32px;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .header-top {
+      display: flex; justify-content: flex-end; width: 100%;
+      margin-bottom: 16px;
+    }
+    h1 {
+      font-size: 2.2rem; font-weight: 800;
+      background: linear-gradient(135deg, #a78bfa, #6c5ce7, #00cec9);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; margin-bottom: 6px; letter-spacing: -0.02em;
+    }
+    header .subtitle { color: var(--text-muted); font-size: 0.9rem; }
+
+    /* ── Theme Toggle ── */
+    .theme-toggle {
+      background: var(--surface-2); border: 1px solid var(--border);
+      color: var(--text-muted); width: 40px; height: 40px;
+      border-radius: 12px; cursor: pointer; font-size: 1.15rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    .theme-toggle:hover {
+      background: var(--border); color: var(--text);
+    }
+
+    /* ── Main Stats Grid ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px; margin-bottom: 20px;
+    }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 12px;
+      text-align: center; position: relative; overflow: hidden;
+      transition: transform 0.2s, border-color 0.3s, background 0.3s;
+    }
+    .stat-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(108, 92, 231, 0.4);
+    }
+    .stat-card::before {
+      content: ''; position: absolute;
+      top: 0; left: 0; right: 0; height: 3px;
+    }
+    .stat-card:nth-child(1)::before { background: var(--gradient-1); }
+    .stat-card:nth-child(2)::before { background: var(--gradient-2); }
+    .stat-card:nth-child(3)::before { background: var(--gradient-3); }
+    .stat-card:nth-child(4)::before { background: var(--gradient-4); }
+    .stat-value {
+      font-size: 1.9rem; font-weight: 700;
+      line-height: 1.2; margin-bottom: 2px;
+      transition: transform 0.15s;
+    }
+    .stat-value.bump { transform: scale(1.1); }
+    .stat-card:nth-child(1) .stat-value { color: var(--accent-1); }
+    .stat-card:nth-child(2) .stat-value { color: var(--accent-2); }
+    .stat-card:nth-child(3) .stat-value { color: var(--accent-3); }
+    .stat-card:nth-child(4) .stat-value { color: var(--accent-4); }
+    .stat-label {
+      font-size: 0.72rem; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;
+    }
+
+    /* ── Sub Stats Row ── */
+    .sub-stats {
+      display: flex; gap: 14px; margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .sub-stat {
+      flex: 1; min-width: 140px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 14px 16px;
+      display: flex; align-items: center; gap: 12px;
+      transition: background 0.3s;
+    }
+    .sub-stat-icon {
+      font-size: 1.4rem; width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 10px; flex-shrink: 0;
+    }
+    .sub-stat:nth-child(1) .sub-stat-icon { background: rgba(108,92,231,0.15); }
+    .sub-stat:nth-child(2) .sub-stat-icon { background: rgba(0,206,201,0.15); }
+    .sub-stat:nth-child(3) .sub-stat-icon { background: rgba(253,121,168,0.15); }
+    .sub-stat-info { display: flex; flex-direction: column; }
+    .sub-stat-value {
+      font-size: 1.1rem; font-weight: 700; line-height: 1.2;
+      color: var(--text);
+    }
+    .sub-stat-label {
+      font-size: 0.7rem; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;
+    }
+
+    /* ── Goal Section ── */
+    .goal-section {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px 24px;
+      margin-bottom: 20px; display: flex; align-items: center;
+      gap: 24px; flex-wrap: wrap;
+      transition: background 0.3s;
+    }
+    .goal-input-group {
+      display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+    }
+    .goal-input-group label {
+      font-size: 0.8rem; font-weight: 600; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
+    }
+    .goal-input {
+      width: 100px; background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 7px 12px; color: var(--text);
+      font-size: 0.95rem; font-family: inherit; outline: none;
+      text-align: center; transition: border-color 0.3s;
+    }
+    .goal-input:focus { border-color: var(--accent-1); }
+    .goal-progress-area {
+      flex: 1; display: flex; align-items: center; gap: 16px;
+      min-width: 200px;
+    }
+    .goal-ring {
+      width: 56px; height: 56px; flex-shrink: 0;
+    }
+    .goal-ring-bg { fill: none; stroke: var(--border); stroke-width: 5; }
+    .goal-ring-fill {
+      fill: none; stroke: var(--accent-1); stroke-width: 5;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.4s ease, stroke 0.3s;
+      transform: rotate(-90deg); transform-origin: center;
+    }
+    .goal-ring-text {
+      font-size: 0.7rem; font-weight: 700; fill: var(--text);
+      text-anchor: middle; dominant-baseline: central;
+    }
+    .goal-bar-area { flex: 1; }
+    .goal-bar-track {
+      height: 8px; background: var(--surface-2);
+      border-radius: 4px; overflow: hidden;
+    }
+    .goal-bar-fill {
+      height: 100%; border-radius: 4px;
+      background: var(--gradient-1);
+      transition: width 0.4s ease, background 0.3s;
+      max-width: 100%;
+    }
+    .goal-bar-fill.over { background: linear-gradient(135deg, #ff6b6b, #ee5a24); }
+    .goal-bar-label {
+      font-size: 0.72rem; color: var(--text-muted);
+      margin-top: 4px; font-weight: 600;
+    }
+    .goal-bar-label.over { color: var(--danger); }
+
+    /* ── Editor ── */
+    .editor-wrapper { position: relative; }
+    .toolbar {
+      display: flex; justify-content: space-between;
+      align-items: center; margin-bottom: 10px;
+    }
+    .toolbar-label {
+      font-size: 0.8rem; color: var(--text-muted);
+      font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .toolbar-actions { display: flex; gap: 8px; }
+    .btn {
+      background: var(--surface-2); border: 1px solid var(--border);
+      color: var(--text-muted); padding: 6px 14px;
+      border-radius: 8px; font-size: 0.78rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; font-family: inherit;
+    }
+    .btn:hover { background: var(--border); color: var(--text); }
+    .btn:active { transform: scale(0.96); }
+
+    textarea {
+      width: 100%; min-height: 280px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 22px;
+      color: var(--text); font-size: 1rem;
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+      line-height: 1.8; resize: vertical; outline: none;
+      transition: border-color 0.3s, box-shadow 0.3s, background 0.3s;
+    }
+    textarea::placeholder { color: var(--text-muted); opacity: 0.5; }
+    textarea:focus {
+      border-color: var(--accent-1);
+      box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.12);
+    }
+
+    /* ── Analysis Panels ── */
+    .analysis-row {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 16px; margin-top: 20px;
+    }
+    .panel {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 22px;
+      transition: background 0.3s;
+    }
+    .panel-title {
+      font-size: 0.8rem; font-weight: 700; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.06em;
+      margin-bottom: 16px;
+    }
+
+    /* ── Char Breakdown ── */
+    .char-breakdown { display: flex; flex-direction: column; gap: 10px; }
+    .char-row {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .char-row-label {
+      width: 60px; font-size: 0.78rem; font-weight: 600;
+      color: var(--text-muted); text-align: right; flex-shrink: 0;
+    }
+    .char-row-bar {
+      flex: 1; height: 8px; background: var(--surface-2);
+      border-radius: 4px; overflow: hidden;
+    }
+    .char-row-fill {
+      height: 100%; border-radius: 4px;
+      transition: width 0.4s ease;
+    }
+    .char-row:nth-child(1) .char-row-fill { background: var(--accent-1); }
+    .char-row:nth-child(2) .char-row-fill { background: var(--accent-2); }
+    .char-row:nth-child(3) .char-row-fill { background: var(--accent-3); }
+    .char-row:nth-child(4) .char-row-fill { background: var(--accent-4); }
+    .char-row:nth-child(5) .char-row-fill { background: var(--accent-5); }
+    .char-row-count {
+      width: 50px; font-size: 0.78rem; font-weight: 700;
+      color: var(--text); text-align: right; flex-shrink: 0;
+    }
+
+    /* Kanji Ratio */
+    .kanji-ratio {
+      margin-top: 16px; padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+    .kanji-ratio-header {
+      display: flex; justify-content: space-between;
+      align-items: center; margin-bottom: 8px;
+    }
+    .kanji-ratio-label {
+      font-size: 0.78rem; font-weight: 600; color: var(--text-muted);
+    }
+    .kanji-ratio-value {
+      font-size: 0.9rem; font-weight: 700;
+    }
+    .kanji-ratio-bar {
+      height: 8px; background: var(--surface-2);
+      border-radius: 4px; overflow: hidden; position: relative;
+    }
+    .kanji-ratio-fill {
+      height: 100%; border-radius: 4px;
+      transition: width 0.4s ease, background 0.3s;
+    }
+    .kanji-ratio-zone {
+      position: absolute; top: -1px; bottom: -1px;
+      border-left: 2px dashed var(--text-dim);
+      border-right: 2px dashed var(--text-dim);
+      opacity: 0.4; pointer-events: none;
+    }
+    .kanji-ratio-hint {
+      font-size: 0.68rem; color: var(--text-dim);
+      margin-top: 6px;
+    }
+
+    /* ── SNS Gauges ── */
+    .sns-list { display: flex; flex-direction: column; gap: 14px; }
+    .sns-item {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .sns-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 800; color: #fff; flex-shrink: 0;
+    }
+    .sns-x { background: #1a1a2e; }
+    html[data-theme="light"] .sns-x { background: #0f1419; }
+    .sns-ig { background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045); }
+    .sns-line { background: #06c755; }
+    .sns-bs { background: #0085ff; }
+    .sns-bar-area { flex: 1; }
+    .sns-bar-top {
+      display: flex; justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    .sns-bar-name {
+      font-size: 0.75rem; font-weight: 600; color: var(--text-muted);
+    }
+    .sns-bar-count {
+      font-size: 0.72rem; font-weight: 700; color: var(--text);
+    }
+    .sns-bar-count.over { color: var(--danger); }
+    .sns-bar-track {
+      height: 6px; background: var(--surface-2);
+      border-radius: 3px; overflow: hidden;
+    }
+    .sns-bar-fill {
+      height: 100%; border-radius: 3px;
+      transition: width 0.3s ease, background 0.3s;
+    }
+    .sns-bar-fill.ok { background: var(--accent-2); }
+    .sns-bar-fill.warn { background: var(--warning); }
+    .sns-bar-fill.over { background: var(--danger); }
+
+    /* ── Info Section ── */
+    .info-section {
+      margin-top: 32px; padding: 28px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius);
+      transition: background 0.3s;
+    }
+    .info-section h2 {
+      font-size: 1.2rem; margin-bottom: 14px; color: var(--text);
+    }
+    .info-section p {
+      color: var(--text-muted); font-size: 0.85rem; margin-bottom: 10px;
+    }
+    .info-section ul { list-style: none; padding: 0; }
+    .info-section li {
+      color: var(--text-muted); font-size: 0.85rem;
+      padding: 5px 0 5px 20px; position: relative;
+    }
+    .info-section li::before {
+      content: '\2192'; position: absolute; left: 0; color: var(--accent-1);
+    }
+
+    .privacy-note {
+      margin-top: 20px; padding: 14px 18px;
+      background: rgba(108,92,231,0.08);
+      border: 1px solid rgba(108,92,231,0.2);
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem; color: var(--text-muted);
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    footer {
+      text-align: center; margin-top: 40px;
+      color: var(--text-muted); font-size: 0.75rem;
+    }
+
+    .toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface-2); border: 1px solid var(--border);
+      color: var(--text); padding: 10px 24px; border-radius: 10px;
+      font-size: 0.85rem; font-weight: 600; opacity: 0;
+      transition: all 0.3s ease; pointer-events: none; z-index: 100;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @media (max-width: 700px) {
+      .container { padding: 20px 14px 40px; }
+      h1 { font-size: 1.5rem; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .stat-value { font-size: 1.5rem; }
+      .sub-stats { gap: 10px; }
+      .sub-stat { min-width: 100px; padding: 10px 12px; }
+      .analysis-row { grid-template-columns: 1fr; }
+      .goal-section { padding: 16px; gap: 16px; }
+      .goal-progress-area { min-width: unset; }
+      textarea { min-height: 200px; padding: 16px; }
+      .info-section { padding: 20px 16px; }
+    }
+  </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "文字数カウンター",
+    "description": "テキストの文字数・単語数・行数をリアルタイムでカウント。SNS文字数制限チェック、漢字比率分析、読了時間表示など高機能な無料ツール。",
+    "applicationCategory": "UtilityApplication",
+    "operatingSystem": "All",
+    "offers": { "@type": "Offer", "price": "0" }
+  }
+  </script>
+</head>
+<body>
+  <div class="bg-glow"></div>
+  <div class="container">
+    <header>
+      <div class="header-top">
+        <button class="theme-toggle" id="themeToggle" type="button" aria-label="テーマ切替">
+          <span id="themeIcon">&#9790;</span>
+        </button>
+      </div>
+      <h1>文字数カウンター</h1>
+      <p class="subtitle">リアルタイム文字数・単語数・行数カウント &mdash; SNS制限チェック・漢字比率分析</p>
+    </header>
+
+    <main>
+      <!-- Primary Stats -->
+      <div class="stats-grid" role="region" aria-label="カウント結果">
+        <div class="stat-card">
+          <div class="stat-value" id="charCount">0</div>
+          <div class="stat-label">文字数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="charNoSpace">0</div>
+          <div class="stat-label">空白除く</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="wordCount">0</div>
+          <div class="stat-label">単語数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="lineCount">0</div>
+          <div class="stat-label">行数</div>
+        </div>
+      </div>
+
+      <!-- Sub Stats: 原稿用紙・読了時間・段落数 -->
+      <div class="sub-stats">
+        <div class="sub-stat">
+          <div class="sub-stat-icon">&#128196;</div>
+          <div class="sub-stat-info">
+            <span class="sub-stat-value" id="manuscriptCount">0 枚</span>
+            <span class="sub-stat-label">原稿用紙 (400字)</span>
+          </div>
+        </div>
+        <div class="sub-stat">
+          <div class="sub-stat-icon">&#9201;</div>
+          <div class="sub-stat-info">
+            <span class="sub-stat-value" id="readTime">0 秒</span>
+            <span class="sub-stat-label">読了時間</span>
+          </div>
+        </div>
+        <div class="sub-stat">
+          <div class="sub-stat-icon">&#182;</div>
+          <div class="sub-stat-info">
+            <span class="sub-stat-value" id="paraCount">0</span>
+            <span class="sub-stat-label">段落数</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Goal -->
+      <div class="goal-section">
+        <div class="goal-input-group">
+          <label for="goalInput">目標文字数</label>
+          <input type="number" id="goalInput" class="goal-input" min="0" placeholder="例: 800" aria-label="目標文字数">
+        </div>
+        <div class="goal-progress-area" id="goalArea" style="display:none;">
+          <svg class="goal-ring" viewBox="0 0 60 60">
+            <circle class="goal-ring-bg" cx="30" cy="30" r="25"/>
+            <circle class="goal-ring-fill" id="goalRingFill" cx="30" cy="30" r="25"
+              stroke-dasharray="157.08" stroke-dashoffset="157.08"/>
+            <text class="goal-ring-text" id="goalRingText" x="30" y="30">0%</text>
+          </svg>
+          <div class="goal-bar-area">
+            <div class="goal-bar-track">
+              <div class="goal-bar-fill" id="goalBarFill" style="width:0%"></div>
+            </div>
+            <div class="goal-bar-label" id="goalBarLabel">0 / 0 文字</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Editor -->
+      <div class="editor-wrapper">
+        <div class="toolbar">
+          <span class="toolbar-label">テキスト入力</span>
+          <div class="toolbar-actions">
+            <button class="btn" id="copyBtn" type="button">コピー</button>
+            <button class="btn" id="clearBtn" type="button">クリア</button>
+          </div>
+        </div>
+        <textarea
+          id="editor"
+          placeholder="ここにテキストを入力またはペーストしてください..."
+          aria-label="テキスト入力エリア"
+          spellcheck="false"
+        ></textarea>
+      </div>
+
+      <!-- Analysis Row -->
+      <div class="analysis-row">
+        <!-- Character Breakdown -->
+        <div class="panel">
+          <div class="panel-title">文字種別</div>
+          <div class="char-breakdown">
+            <div class="char-row">
+              <span class="char-row-label">漢字</span>
+              <div class="char-row-bar"><div class="char-row-fill" id="barKanji" style="width:0%"></div></div>
+              <span class="char-row-count" id="cntKanji">0</span>
+            </div>
+            <div class="char-row">
+              <span class="char-row-label">ひらがな</span>
+              <div class="char-row-bar"><div class="char-row-fill" id="barHira" style="width:0%"></div></div>
+              <span class="char-row-count" id="cntHira">0</span>
+            </div>
+            <div class="char-row">
+              <span class="char-row-label">カタカナ</span>
+              <div class="char-row-bar"><div class="char-row-fill" id="barKata" style="width:0%"></div></div>
+              <span class="char-row-count" id="cntKata">0</span>
+            </div>
+            <div class="char-row">
+              <span class="char-row-label">英字</span>
+              <div class="char-row-bar"><div class="char-row-fill" id="barAlpha" style="width:0%"></div></div>
+              <span class="char-row-count" id="cntAlpha">0</span>
+            </div>
+            <div class="char-row">
+              <span class="char-row-label">数字</span>
+              <div class="char-row-bar"><div class="char-row-fill" id="barNum" style="width:0%"></div></div>
+              <span class="char-row-count" id="cntNum">0</span>
+            </div>
+          </div>
+          <div class="kanji-ratio">
+            <div class="kanji-ratio-header">
+              <span class="kanji-ratio-label">漢字比率</span>
+              <span class="kanji-ratio-value" id="kanjiRatioVal">0%</span>
+            </div>
+            <div class="kanji-ratio-bar">
+              <div class="kanji-ratio-fill" id="kanjiRatioFill" style="width:0%"></div>
+              <div class="kanji-ratio-zone" style="left:20%;right:60%"></div>
+            </div>
+            <div class="kanji-ratio-hint" id="kanjiHint">テキストを入力すると漢字比率を分析します（20〜40%が読みやすい目安）</div>
+          </div>
+        </div>
+
+        <!-- SNS Gauges -->
+        <div class="panel">
+          <div class="panel-title">SNS 文字数チェック</div>
+          <div class="sns-list">
+            <div class="sns-item" data-limit="280">
+              <div class="sns-icon sns-x">X</div>
+              <div class="sns-bar-area">
+                <div class="sns-bar-top">
+                  <span class="sns-bar-name">X (Twitter)</span>
+                  <span class="sns-bar-count" id="snsX">0 / 280</span>
+                </div>
+                <div class="sns-bar-track"><div class="sns-bar-fill ok" id="snsXBar" style="width:0%"></div></div>
+              </div>
+            </div>
+            <div class="sns-item" data-limit="500">
+              <div class="sns-icon sns-bs">BS</div>
+              <div class="sns-bar-area">
+                <div class="sns-bar-top">
+                  <span class="sns-bar-name">Bluesky</span>
+                  <span class="sns-bar-count" id="snsBs">0 / 500</span>
+                </div>
+                <div class="sns-bar-track"><div class="sns-bar-fill ok" id="snsBsBar" style="width:0%"></div></div>
+              </div>
+            </div>
+            <div class="sns-item" data-limit="500">
+              <div class="sns-icon sns-line">L</div>
+              <div class="sns-bar-area">
+                <div class="sns-bar-top">
+                  <span class="sns-bar-name">LINE</span>
+                  <span class="sns-bar-count" id="snsLine">0 / 500</span>
+                </div>
+                <div class="sns-bar-track"><div class="sns-bar-fill ok" id="snsLineBar" style="width:0%"></div></div>
+              </div>
+            </div>
+            <div class="sns-item" data-limit="2200">
+              <div class="sns-icon sns-ig">IG</div>
+              <div class="sns-bar-area">
+                <div class="sns-bar-top">
+                  <span class="sns-bar-name">Instagram</span>
+                  <span class="sns-bar-count" id="snsIg">0 / 2,200</span>
+                </div>
+                <div class="sns-bar-track"><div class="sns-bar-fill ok" id="snsIgBar" style="width:0%"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <section class="info-section">
+      <h2>文字数カウンターの使い方</h2>
+      <p>テキストエリアに文字を入力するか、テキストをコピー＆ペーストするだけ。すべての分析がリアルタイムで更新されます。</p>
+      <ul>
+        <li><strong>文字数・空白除く文字数</strong> &mdash; 全文字数とスペース・改行を除いた文字数</li>
+        <li><strong>単語数</strong> &mdash; 英単語と日本語文字をカウント</li>
+        <li><strong>原稿用紙換算</strong> &mdash; 400字詰め原稿用紙の枚数に換算</li>
+        <li><strong>読了時間</strong> &mdash; 日本語500文字/分で算出</li>
+        <li><strong>文字種別・漢字比率</strong> &mdash; 漢字・ひらがな・カタカナ・英字・数字の内訳と読みやすさ指標</li>
+        <li><strong>SNS文字数チェック</strong> &mdash; X / Bluesky / LINE / Instagram の制限をリアルタイム表示</li>
+        <li><strong>目標文字数</strong> &mdash; 目標を設定すると円形ゲージで進捗を確認できます</li>
+      </ul>
+      <div class="privacy-note">
+        &#128274; テキストはすべてブラウザ上で処理されます。サーバーへの送信は一切ありません。
+      </div>
+    </section>
+
+    <footer>
+      <p>&copy; 2026 文字数カウンター &mdash; 完全無料・広告なし・プライバシー安心</p>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ── Elements ──
+    const $ = id => document.getElementById(id);
+    const editor = $('editor');
+    const toast = $('toast');
+
+    // ── Theme ──
+    function getSystemTheme() {
+      return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    }
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      $('themeIcon').innerHTML = theme === 'light' ? '&#9728;' : '&#9790;';
+    }
+    function initTheme() {
+      const saved = localStorage.getItem('moji-theme');
+      applyTheme(saved || getSystemTheme());
+    }
+    $('themeToggle').addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('moji-theme', next);
+      applyTheme(next);
+    });
+    window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+      if (!localStorage.getItem('moji-theme')) applyTheme(getSystemTheme());
+    });
+    initTheme();
+
+    // ── Text Persistence ──
+    const STORAGE_KEY = 'moji-text';
+    const GOAL_KEY = 'moji-goal';
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) editor.value = saved;
+    const savedGoal = localStorage.getItem(GOAL_KEY);
+    if (savedGoal) $('goalInput').value = savedGoal;
+
+    let saveTimer = null;
+    function scheduleSave() {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        localStorage.setItem(STORAGE_KEY, editor.value);
+      }, 300);
+    }
+
+    // ── Word Count ──
+    function countWords(text) {
+      if (!text.trim()) return 0;
+      const m = text.match(/[a-zA-Z0-9]+(?:[''\-][a-zA-Z0-9]+)*|[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf\u3400-\u4dbf\uf900-\ufaff\u{20000}-\u{2a6df}]/gu);
+      return m ? m.length : 0;
+    }
+
+    // ── Character Classification ──
+    function classifyChars(text) {
+      let kanji = 0, hira = 0, kata = 0, alpha = 0, num = 0;
+      for (const ch of text) {
+        const cp = ch.codePointAt(0);
+        if ((cp >= 0x4e00 && cp <= 0x9faf) || (cp >= 0x3400 && cp <= 0x4dbf) ||
+            (cp >= 0xf900 && cp <= 0xfaff) || (cp >= 0x20000 && cp <= 0x2a6df)) kanji++;
+        else if (cp >= 0x3040 && cp <= 0x309f) hira++;
+        else if (cp >= 0x30a0 && cp <= 0x30ff) kata++;
+        else if ((cp >= 65 && cp <= 90) || (cp >= 97 && cp <= 122) ||
+                 (cp >= 0xff21 && cp <= 0xff3a) || (cp >= 0xff41 && cp <= 0xff5a)) alpha++;
+        else if ((cp >= 48 && cp <= 57) || (cp >= 0xff10 && cp <= 0xff19)) num++;
+      }
+      return { kanji, hira, kata, alpha, num };
+    }
+
+    // ── SNS Config ──
+    const sns = [
+      { countEl: 'snsX', barEl: 'snsXBar', limit: 280, label: 'X (Twitter)' },
+      { countEl: 'snsBs', barEl: 'snsBsBar', limit: 500, label: 'Bluesky' },
+      { countEl: 'snsLine', barEl: 'snsLineBar', limit: 500, label: 'LINE' },
+      { countEl: 'snsIg', barEl: 'snsIgBar', limit: 2200, label: 'Instagram' },
+    ];
+
+    // ── Animate ──
+    function animateValue(el, newVal) {
+      const f = typeof newVal === 'number' ? newVal.toLocaleString() : newVal;
+      if (el.textContent !== f) {
+        el.textContent = f;
+        el.classList.add('bump');
+        setTimeout(() => el.classList.remove('bump'), 150);
+      }
+    }
+
+    // ── Goal ──
+    const CIRCUMFERENCE = 2 * Math.PI * 25; // ~157.08
+    function updateGoal(chars) {
+      const goal = parseInt($('goalInput').value) || 0;
+      const area = $('goalArea');
+      if (goal <= 0) { area.style.display = 'none'; return; }
+      area.style.display = 'flex';
+
+      const pct = Math.min(chars / goal, 1.5);
+      const pctDisplay = Math.round((chars / goal) * 100);
+      const over = chars > goal;
+
+      // Ring
+      const offset = CIRCUMFERENCE - (Math.min(pct, 1) * CIRCUMFERENCE);
+      const ring = $('goalRingFill');
+      ring.style.strokeDashoffset = offset;
+      ring.style.stroke = over ? 'var(--danger)' : 'var(--accent-1)';
+      $('goalRingText').textContent = pctDisplay + '%';
+
+      // Bar
+      const bar = $('goalBarFill');
+      bar.style.width = Math.min(pct * 100, 100) + '%';
+      bar.classList.toggle('over', over);
+
+      const label = $('goalBarLabel');
+      label.textContent = chars.toLocaleString() + ' / ' + goal.toLocaleString() + ' 文字';
+      label.classList.toggle('over', over);
+    }
+
+    // ── Main Update ──
+    function update() {
+      const text = editor.value;
+      const chars = text.length;
+      const noSpace = text.replace(/[\s\u3000]/g, '').length;
+      const words = countWords(text);
+      const lines = text ? text.split('\n').length : 0;
+      const paragraphs = text ? text.split(/\n\s*\n/).filter(p => p.trim()).length : 0;
+
+      // Primary stats
+      animateValue($('charCount'), chars);
+      animateValue($('charNoSpace'), noSpace);
+      animateValue($('wordCount'), words);
+      animateValue($('lineCount'), lines);
+
+      // Sub stats
+      const manuscriptPages = noSpace > 0 ? Math.ceil(noSpace / 400) : 0;
+      $('manuscriptCount').textContent = manuscriptPages + ' 枚';
+
+      const readSec = Math.round((noSpace / 500) * 60);
+      if (readSec < 60) $('readTime').textContent = readSec + ' 秒';
+      else if (readSec < 3600) $('readTime').textContent = Math.floor(readSec / 60) + ' 分 ' + (readSec % 60) + ' 秒';
+      else $('readTime').textContent = Math.floor(readSec / 3600) + ' 時間 ' + Math.floor((readSec % 3600) / 60) + ' 分';
+
+      $('paraCount').textContent = paragraphs || (text.trim() ? 1 : 0);
+
+      // Character breakdown
+      const cls = classifyChars(text);
+      const maxCls = Math.max(cls.kanji, cls.hira, cls.kata, cls.alpha, cls.num, 1);
+      $('cntKanji').textContent = cls.kanji.toLocaleString();
+      $('cntHira').textContent = cls.hira.toLocaleString();
+      $('cntKata').textContent = cls.kata.toLocaleString();
+      $('cntAlpha').textContent = cls.alpha.toLocaleString();
+      $('cntNum').textContent = cls.num.toLocaleString();
+      $('barKanji').style.width = (cls.kanji / maxCls * 100) + '%';
+      $('barHira').style.width = (cls.hira / maxCls * 100) + '%';
+      $('barKata').style.width = (cls.kata / maxCls * 100) + '%';
+      $('barAlpha').style.width = (cls.alpha / maxCls * 100) + '%';
+      $('barNum').style.width = (cls.num / maxCls * 100) + '%';
+
+      // Kanji ratio
+      const totalJp = cls.kanji + cls.hira + cls.kata;
+      const kanjiRatio = totalJp > 0 ? (cls.kanji / totalJp * 100) : 0;
+      const ratioEl = $('kanjiRatioVal');
+      ratioEl.textContent = kanjiRatio.toFixed(1) + '%';
+      if (totalJp > 0) {
+        if (kanjiRatio >= 20 && kanjiRatio <= 40) {
+          ratioEl.style.color = 'var(--success)';
+        } else if (kanjiRatio > 40) {
+          ratioEl.style.color = 'var(--danger)';
+        } else {
+          ratioEl.style.color = 'var(--warning)';
+        }
+      } else {
+        ratioEl.style.color = 'var(--text-muted)';
+      }
+      $('kanjiRatioFill').style.width = Math.min(kanjiRatio, 100) + '%';
+      $('kanjiRatioFill').style.background = kanjiRatio > 40 ? 'var(--danger)' :
+        kanjiRatio >= 20 ? 'var(--success)' : 'var(--warning)';
+
+      const hint = $('kanjiHint');
+      if (totalJp === 0) hint.textContent = 'テキストを入力すると漢字比率を分析します（20〜40%が読みやすい目安）';
+      else if (kanjiRatio >= 20 && kanjiRatio <= 40) hint.textContent = '読みやすい漢字比率です';
+      else if (kanjiRatio > 40) hint.textContent = '漢字が多めです。ひらがなに開くと読みやすくなります';
+      else hint.textContent = '漢字が少なめです。適度に漢字を使うと引き締まります';
+
+      // SNS
+      sns.forEach(s => {
+        const ct = $(s.countEl);
+        const bar = $(s.barEl);
+        const pct = (chars / s.limit) * 100;
+        ct.textContent = chars.toLocaleString() + ' / ' + s.limit.toLocaleString();
+        ct.classList.toggle('over', chars > s.limit);
+        bar.style.width = Math.min(pct, 100) + '%';
+        bar.className = 'sns-bar-fill ' + (chars > s.limit ? 'over' : pct > 80 ? 'warn' : 'ok');
+      });
+
+      // Goal
+      updateGoal(chars);
+
+      // Persist
+      scheduleSave();
+    }
+
+    // ── Events ──
+    editor.addEventListener('input', update);
+
+    $('goalInput').addEventListener('input', () => {
+      localStorage.setItem(GOAL_KEY, $('goalInput').value);
+      update();
+    });
+
+    $('copyBtn').addEventListener('click', () => {
+      if (!editor.value) return;
+      navigator.clipboard.writeText(editor.value).then(() => showToast('コピーしました'));
+    });
+
+    $('clearBtn').addEventListener('click', () => {
+      if (!editor.value) return;
+      editor.value = '';
+      localStorage.removeItem(STORAGE_KEY);
+      update();
+      editor.focus();
+      showToast('クリアしました');
+    });
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 1800);
+    }
+
+    // ── Init ──
+    update();
+    editor.focus();
+  </script>
+</body>
+</html>
